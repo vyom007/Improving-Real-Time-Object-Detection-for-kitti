@@ -1,0 +1,1255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>YOLOv5s KITTI – Interactive Architecture</title>
+  <style>
+    :root {
+      --bg: #05060a;
+      --panel: #0c0f18;
+      --panel-softer: #131726;
+      --border-soft: #33384a;
+      --accent: #38bdf8;
+      --accent-soft: rgba(56, 189, 248, 0.15);
+      --accent-strong: #f97316;
+      --text-main: #e5e7eb;
+      --text-muted: #9ca3af;
+      --text-dim: #6b7280;
+      --danger: #f97373;
+      --shadow-soft: 0 18px 45px rgba(0, 0, 0, 0.65);
+      --radius-lg: 18px;
+      --radius-sm: 10px;
+      --transition-fast: 0.18s ease-out;
+      --transition-med: 0.26s ease-out;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+        "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top left, #020617 0, #020617 40%, #000 100%);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+    }
+
+    .app-shell {
+      width: 100%;
+      max-width: 1400px;
+      margin: 24px;
+      border-radius: 28px;
+      background: radial-gradient(circle at top, #020617 0, #020617 40%, #020617 65%, #020617 100%);
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      box-shadow: var(--shadow-soft);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header */
+
+    .header {
+      padding: 18px 22px 6px;
+      border-bottom: 1px solid rgba(31, 41, 55, 0.9);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      background: radial-gradient(circle at top left, #020617 0, #020617 40%, #020617 100%);
+    }
+
+    .title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .title-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .title {
+      font-size: 18px;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      color: #f9fafb;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .title-pill {
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--text-muted);
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .stats-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .stat-pill {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      padding: 2px 9px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      color: var(--text-dim);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .stat-pill span.value {
+      color: #f9fafb;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+    }
+
+    .chip-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .chip {
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      border: 1px solid rgba(56, 189, 248, 0.5);
+      color: rgba(186, 230, 253, 0.9);
+      background: radial-gradient(circle at top, rgba(8, 47, 73, 0.9), transparent 70%);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .chip-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: radial-gradient(circle, #22c55e 0, #16a34a 40%, transparent 70%);
+      box-shadow: 0 0 10px rgba(34, 197, 94, 0.7);
+    }
+
+    .chip-label {
+      color: rgba(148, 163, 184, 0.9);
+    }
+
+    .chip-strong {
+      font-weight: 600;
+      color: rgba(248, 250, 252, 0.96);
+    }
+
+    /* Main layout */
+
+    .main {
+      display: grid;
+      grid-template-columns: minmax(0, 2.4fr) minmax(0, 1.2fr);
+      gap: 0;
+      min-height: 520px;
+      max-height: calc(100vh - 130px);
+    }
+
+    .diagram-pane {
+      padding: 18px 18px 18px 22px;
+      border-right: 1px solid rgba(31, 41, 55, 0.85);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .detail-pane {
+      padding: 18px 20px;
+      background: radial-gradient(circle at top right, #020617 0, #020617 40%, #020617 100%);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* Columns for Backbone / Neck / Detect */
+
+    .columns {
+      display: grid;
+      grid-template-columns: 1.1fr 1.1fr 0.9fr;
+      gap: 14px;
+      align-items: flex-start;
+      height: 100%;
+      max-height: calc(100vh - 150px);
+      overflow-y: scroll !important;
+      overflow-x: hidden;
+      
+      padding-right: 4px;
+      scrollbar-width: thin;
+      scrollbar-color: #3b82f6 #0f172a;
+
+    }
+
+    .stage-column {
+      background: radial-gradient(circle at top, #020617 0, #020617 70%, #000 100%);
+      border-radius: 20px;
+      border: 1px solid rgba(75, 85, 99, 0.6);
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.68);
+      padding: 10px 10px 14px;
+      position: relative;
+    }
+
+    .stage-header {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 10px;
+      padding: 2px 2px 4px;
+    }
+
+    .stage-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: var(--text-dim);
+    }
+
+    .stage-title {
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: #e5e7eb;
+    }
+
+    .stage-subtitle {
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    .block-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    /* Layer card */
+
+    .layer-card {
+      background: linear-gradient(135deg, #020617 0, #020617 70%, #020617 100%);
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(75, 85, 99, 0.8);
+      padding: 8px 9px;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: border-color var(--transition-fast), box-shadow var(--transition-fast),
+        transform var(--transition-fast), background 0.22s ease-out;
+    }
+
+    .layer-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at top left, rgba(148, 163, 184, 0.2), transparent 60%);
+      opacity: 0;
+      transition: opacity var(--transition-fast);
+      pointer-events: none;
+    }
+
+    .layer-card:hover::before {
+      opacity: 1;
+    }
+
+    .layer-card:hover {
+      border-color: rgba(148, 163, 184, 0.9);
+      box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.35),
+        0 10px 24px rgba(15, 23, 42, 0.85);
+      transform: translateY(-1px);
+    }
+
+    .layer-card.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px var(--accent), 0 0 20px rgba(56, 189, 248, 0.45);
+      background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.4), #020617);
+    }
+
+    .layer-top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .layer-name {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      color: #f9fafb;
+    }
+
+    .layer-id {
+      font-size: 11px;
+      color: var(--text-dim);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .layer-main {
+      margin-top: 2px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .layer-tag-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 5px;
+      gap: 6px;
+    }
+
+    .layer-type-pill {
+      padding: 2px 7px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: rgba(209, 213, 219, 0.9);
+    }
+
+    .layer-meta {
+      font-size: 10px;
+      color: var(--text-dim);
+      text-align: right;
+    }
+
+    .connection-label {
+      position: absolute;
+      right: 10px;
+      top: -7px;
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      padding: 2px 6px;
+      border-radius: 999px;
+      border: 1px solid rgba(56, 189, 248, 0.5);
+      background: radial-gradient(circle at top, rgba(8, 47, 73, 0.95), transparent 70%);
+      color: rgba(226, 232, 240, 0.9);
+    }
+
+    /* Detail panel */
+
+    .detail-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .detail-title {
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #e5e7eb;
+    }
+
+    .detail-subtitle {
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    .detail-chip {
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      border: 1px solid rgba(148, 163, 184, 0.6);
+      color: rgba(209, 213, 219, 0.9);
+    }
+
+    .detail-body {
+      background: radial-gradient(circle at top right, #020617 0, #020617 60%, #020617 100%);
+      border-radius: 18px;
+      border: 1px solid rgba(55, 65, 81, 0.9);
+      box-shadow: 0 10px 26px rgba(15, 23, 42, 0.85);
+      padding: 12px 13px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .detail-row-main {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .detail-layer-name {
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      color: #f9fafb;
+    }
+
+    .detail-layer-id {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-top: 2px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .detail-layer-short {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      font-size: 11px;
+    }
+
+    .badge {
+      padding: 3px 7px;
+      border-radius: 999px;
+      border: 1px solid rgba(75, 85, 99, 0.9);
+      color: rgba(209, 213, 219, 0.9);
+      background: radial-gradient(circle at top, #020617, #020617 80%, #020617);
+    }
+
+    .badge-strong {
+      border-color: rgba(56, 189, 248, 0.8);
+      color: rgba(224, 242, 254, 0.96);
+      background: radial-gradient(circle at top left, rgba(8, 47, 73, 0.95), #020617 70%);
+    }
+
+    .badge-warn {
+      border-color: rgba(249, 115, 22, 0.9);
+      color: rgba(255, 237, 213, 0.96);
+      background: radial-gradient(circle at top left, rgba(124, 45, 18, 0.9), #020617 70%);
+    }
+
+    .detail-section-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--text-dim);
+      margin-top: 4px;
+      margin-bottom: 4px;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1.3fr;
+      gap: 8px 12px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .kv-label {
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      font-size: 10px;
+      margin-bottom: 1px;
+    }
+
+    .kv-value {
+      font-size: 12px;
+      color: #e5e7eb;
+    }
+
+    .detail-notes {
+      margin-top: 4px;
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.55;
+    }
+
+    .hint {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-top: 2px;
+    }
+
+    .footer-hint {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-top: 2px;
+      padding-top: 6px;
+      border-top: 1px dashed rgba(55, 65, 81, 0.8);
+    }
+
+    .kbd {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1px 6px;
+      border-radius: 5px;
+      border: 1px solid rgba(75, 85, 99, 0.9);
+      font-size: 10px;
+      background: #020617;
+      color: var(--text-muted);
+      margin-left: 2px;
+    }
+
+    @media (max-width: 1000px) {
+      .main {
+        grid-template-columns: minmax(0, 1.7fr) minmax(0, 1.3fr);
+      }
+    }
+
+    @media (max-width: 900px) {
+      .app-shell {
+        margin: 12px;
+      }
+      .main {
+        grid-template-columns: minmax(0, 1fr);
+        max-height: none;
+      }
+      .diagram-pane {
+        border-right: none;
+        border-bottom: 1px solid rgba(31, 41, 55, 0.85);
+      }
+    }
+
+    @media (max-width: 640px) {
+      .columns {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <header class="header">
+    <div class="title-row">
+      <div class="title-group">
+        <div class="title">
+          <span>YOLOv5s – KITTI</span>
+          <span class="title-pill">Backbone · Neck · Detect Head</span>
+        </div>
+        <div class="subtitle">
+          Interactive architecture view — click any block to inspect layer details.
+        </div>
+        <div class="stats-row">
+          <div class="stat-pill">
+            <span>Layers</span>
+            <span class="value">289</span>
+          </div>
+          <div class="stat-pill">
+            <span>Parameters</span>
+            <span class="value">7.37M</span>
+          </div>
+          <div class="stat-pill">
+            <span>GFLOPs</span>
+            <span class="value">17.4</span>
+          </div>
+        </div>
+      </div>
+      <div class="chip-row">
+        <div class="chip">
+          <span class="chip-dot"></span>
+          <span class="chip-label">Mode</span>
+          <span class="chip-strong">Architecture Explorer</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+    <!-- Diagram side -->
+    <section class="diagram-pane">
+      <div class="columns" id="columns"></div>
+      <div class="footer-hint">
+        Hint: Click any block to inspect its role. Hold
+        <span class="kbd">Ctrl</span> and click to cycle quickly through adjacent blocks.
+      </div>
+    </section>
+
+    <!-- Detail side -->
+    <aside class="detail-pane">
+      <div class="detail-header">
+        <div>
+          <div class="detail-title">Layer Inspector</div>
+          <div class="detail-subtitle">Backbone · Neck (FPN+PANet) · Detect head</div>
+        </div>
+        <div class="detail-chip" id="stage-chip">No layer selected</div>
+      </div>
+
+      <div class="detail-body" id="detail-body">
+        <div class="detail-row-main">
+          <div>
+            <div class="detail-layer-name" id="detail-name">
+              Click a block on the left →
+            </div>
+            <div class="detail-layer-id" id="detail-id">
+              LAYER —
+            </div>
+            <div class="detail-layer-short" id="detail-short">
+              You’ll see layer type, parameters, downsampling stride and how it fits into the YOLOv5
+              backbone → neck → detect pipeline.
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="detail-section-title">At a glance</div>
+          <div class="badge-row" id="badge-row">
+            <span class="badge">Backbone: feature extraction</span>
+            <span class="badge">Neck: multi-scale fusion</span>
+            <span class="badge">Head: dense predictions</span>
+          </div>
+        </div>
+
+        <div>
+          <div class="detail-section-title">Technical view</div>
+          <div class="detail-grid">
+            <div>
+              <div class="kv-label">Type</div>
+              <div class="kv-value" id="kv-type">—</div>
+            </div>
+            <div>
+              <div class="kv-label">Stage</div>
+              <div class="kv-value" id="kv-stage">—</div>
+            </div>
+            <div>
+              <div class="kv-label">Shape / stride</div>
+              <div class="kv-value" id="kv-shape">—</div>
+            </div>
+            <div>
+              <div class="kv-label">Params / FLOPs</div>
+              <div class="kv-value" id="kv-compute">—</div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="detail-section-title">Role in the pipeline</div>
+          <div class="detail-notes" id="detail-notes">
+            The backbone progressively downsamples the input and extracts rich spatial features.
+            The neck fuses feature maps across scales (P3, P4, P5), and the detect head predicts
+            bounding boxes and class probabilities at multiple resolutions.
+          </div>
+          <div class="hint" id="detail-hint">
+            When you select a layer, this panel will describe how it transforms the feature maps
+            and why it exists in YOLOv5.
+          </div>
+        </div>
+      </div>
+    </aside>
+  </main>
+</div>
+
+<script>
+  const layers = [
+    {
+      id: 0,
+      name: "Conv(64, 6, 2, 2)",
+      stage: "Backbone",
+      stageSubtitle: "Initial downsampling",
+      type: "Conv",
+      main: "Input → 6×6 conv, stride 2, padding 2, 64 channels",
+      meta: "Stride 2 · 1/2 resolution",
+      shape: "P1: ~1/2 input, 64 ch",
+      compute: "Low compute, first feature extractor",
+      notes:
+        "This is the very first convolution. It quickly reduces spatial size while expanding channels, " +
+        "turning RGB pixels into a richer feature representation the network can work with.",
+      tags: ["Downsampling", "Feature extraction", "Stem"]
+    },
+    {
+      id: 1,
+      name: "Conv(128, 3, 2)",
+      stage: "Backbone",
+      stageSubtitle: "Coarser features",
+      type: "Conv",
+      main: "3×3 conv, stride 2, 128 channels",
+      meta: "Stride 2 · 1/4 resolution",
+      shape: "P2: ~1/4 input, 128 ch",
+      compute: "Moderate compute",
+      notes:
+        "This convolution further reduces resolution and increases channels. It prepares the tensor " +
+        "for the first C3 block, which will add depth and representation power.",
+      tags: ["Spatial reduction", "Channel expansion"]
+    },
+    {
+      id: 2,
+      name: "C3(128)",
+      stage: "Backbone",
+      stageSubtitle: "Local residual mixing",
+      type: "C3",
+      main: "Bottleneck-style residual block at 1/4 resolution",
+      meta: "Keeps 128 channels",
+      shape: "1/4 input · 128 ch",
+      compute: "Low–medium · repeated convs",
+      notes:
+        "C3 introduces multiple bottleneck-style sub-blocks with residual connections. " +
+        "It improves feature richness without blowing up parameters.",
+      tags: ["Residual", "Bottleneck", "Local context"]
+    },
+    {
+      id: 3,
+      name: "Conv(256, 3, 2)",
+      stage: "Backbone",
+      stageSubtitle: "Step into deeper backbone",
+      type: "Conv",
+      main: "3×3 conv, stride 2, 256 channels",
+      meta: "Stride 2 · 1/8 resolution",
+      shape: "P3 backbone: 1/8 input, 256 ch",
+      compute: "Moderate",
+      notes:
+        "This layer creates the canonical P3-scale feature map that will later feed into the neck " +
+        "for detection of small and medium objects.",
+      tags: ["P3 scale", "Downsampling"]
+    },
+    {
+      id: 4,
+      name: "C3(256)",
+      stage: "Backbone",
+      stageSubtitle: "Deep features (P3)",
+      type: "C3",
+      main: "Residual block at 1/8 resolution",
+      meta: "Keeps 256 channels",
+      shape: "P3 backbone: 1/8 input, 256 ch",
+      compute: "Medium",
+      notes:
+        "At this stage, C3 encodes more semantic information while still keeping enough resolution " +
+        "for finer localization of smaller objects.",
+      tags: ["Backbone", "Semantic features", "P3"]
+    },
+    {
+      id: 5,
+      name: "Conv(512, 3, 2)",
+      stage: "Backbone",
+      stageSubtitle: "Higher-level abstraction",
+      type: "Conv",
+      main: "3×3 conv, stride 2, 512 channels",
+      meta: "Stride 2 · 1/16 resolution",
+      shape: "P4 backbone: 1/16 input, 512 ch",
+      compute: "Medium–high",
+      notes:
+        "This layer produces the P4-scale feature map: lower resolution but richer semantics, " +
+        "nice for medium and large objects.",
+      tags: ["P4 scale", "Downsampling"]
+    },
+    {
+      id: 6,
+      name: "C3(512)",
+      stage: "Backbone",
+      stageSubtitle: "Deep P4 features",
+      type: "C3",
+      main: "Residual stack at 1/16 resolution",
+      meta: "Keeps 512 channels",
+      shape: "P4 backbone: 1/16 input, 512 ch",
+      compute: "High",
+      notes:
+        "Multiple bottlenecks refine the P4 representation, improving robustness to appearance changes " +
+        "for objects at this scale.",
+      tags: ["Backbone", "P4", "Semantic richness"]
+    },
+    {
+      id: 7,
+      name: "Conv(1024, 3, 2)",
+      stage: "Backbone",
+      stageSubtitle: "Coarsest backbone level",
+      type: "Conv",
+      main: "3×3 conv, stride 2, 1024 channels",
+      meta: "Stride 2 · 1/32 resolution",
+      shape: "P5 backbone: 1/32 input, 1024 ch",
+      compute: "High",
+      notes:
+        "This creates P5, the coarsest backbone feature map. It carries strong semantic signals " +
+        "for very large objects and global context.",
+      tags: ["P5 scale", "Global context"]
+    },
+    {
+      id: 8,
+      name: "C3(1024)",
+      stage: "Backbone",
+      stageSubtitle: "Deep P5 refinement",
+      type: "C3",
+      main: "Residual block at 1/32 resolution",
+      meta: "Keeps 1024 channels",
+      shape: "P5 backbone: 1/32 input, 1024 ch",
+      compute: "Very high",
+      notes:
+        "Final deep processing at the coarsest level before SPPF. It encodes highly abstract " +
+        "features useful for classification and coarse localization.",
+      tags: ["Backbone", "Deep semantics"]
+    },
+    {
+      id: 9,
+      name: "SPPF(1024, 5)",
+      stage: "Backbone",
+      stageSubtitle: "Spatial pyramid pooling (fast)",
+      type: "SPPF",
+      main: "Pyramid pooling with multiple kernel sizes",
+      meta: "Keeps 1024 channels",
+      shape: "1/32 input, 1024 ch",
+      compute: "Moderate–high but one-time",
+      notes:
+        "SPPF (Spatial Pyramid Pooling – Fast) aggregates context at multiple receptive fields " +
+        "without changing the spatial size, enriching the global context for the neck.",
+      tags: ["Context aggregation", "SPP", "Backbone → Neck bridge"]
+    },
+
+    {
+      id: 10,
+      name: "Conv(512, 1, 1)",
+      stage: "Neck",
+      stageSubtitle: "Start FPN from P5",
+      type: "Conv",
+      connection: "P5",
+      main: "1×1 conv reducing 1024→512 channels",
+      meta: "Keeps 1/32 spatial size",
+      shape: "P5: 1/32 input, 512 ch",
+      compute: "Moderate, channel mix",
+      notes:
+        "This compresses channels and prepares P5 for top-down feature fusion. " +
+        "It’s the first step of the FPN part of the neck.",
+      tags: ["FPN", "Channel mixing", "Top-down"]
+    },
+    {
+      id: 11,
+      name: "Upsample(2)",
+      stage: "Neck",
+      stageSubtitle: "P5 → P4 resolution",
+      type: "Upsample",
+      main: "Nearest-neighbor upsample ×2",
+      meta: "From 1/32 → 1/16",
+      shape: "Matches P4 spatial size",
+      compute: "Low",
+      notes:
+        "Upsamples the P5 feature map so it can be concatenated with the P4 backbone feature map.",
+      tags: ["Top-down path", "Multi-scale"]
+    },
+    {
+      id: 12,
+      name: "Cat([11, 6])",
+      stage: "Neck",
+      stageSubtitle: "Fuse P5↑ and P4",
+      type: "Concat",
+      main: "Concatenate upsampled P5 with backbone P4",
+      meta: "Double channels temporarily",
+      shape: "1/16 input, ~1024 ch",
+      compute: "Concat only",
+      notes:
+        "This merges high-level semantics from P5 with the finer spatial details of P4, " +
+        "improving feature quality around the P4 scale.",
+      tags: ["FPN fusion", "P4", "Skip connections"]
+    },
+    {
+      id: 13,
+      name: "C3×3(512, False)",
+      stage: "Neck",
+      stageSubtitle: "Refined P4 (FPN)",
+      type: "C3",
+      connection: "P5",
+      main: "C3 block working on fused P4 features",
+      meta: "Outputs 512 channels",
+      shape: "P4 out: 1/16 input, 512 ch",
+      compute: "High",
+      notes:
+        "This C3 fuses and refines the concatenated features, outputting a clean, semantically rich P4 " +
+        "feature map to be used by both detection head and PANet path.",
+      tags: ["FPN", "Refinement", "P4 out"]
+    },
+    {
+      id: 14,
+      name: "Conv(256, 1, 1)",
+      stage: "Neck",
+      stageSubtitle: "Setup P4 for P3 fusion",
+      type: "Conv",
+      connection: "P4 OUT",
+      main: "1×1 conv reducing 512→256 ch",
+      meta: "Keeps 1/16 spatial size",
+      shape: "P4 out: 1/16 input, 256 ch",
+      compute: "Moderate",
+      notes:
+        "Compresses channels for the P4 feature so that, once upsampled, it can be concatenated with P3.",
+      tags: ["Channel mixing", "Top-down"]
+    },
+    {
+      id: 15,
+      name: "Upsample(2)",
+      stage: "Neck",
+      stageSubtitle: "P4 → P3 resolution",
+      type: "Upsample",
+      main: "Upsample by factor 2",
+      meta: "1/16 → 1/8",
+      shape: "Matches P3 spatial size",
+      compute: "Low",
+      notes:
+        "Brings refined P4 features to the same spatial resolution as the P3 backbone feature.",
+      tags: ["FPN", "P3 fusion"]
+    },
+    {
+      id: 16,
+      name: "Cat([15, 4])",
+      stage: "Neck",
+      stageSubtitle: "Fuse P4↑ and P3",
+      type: "Concat",
+      main: "Concatenate upsampled P4 with backbone P3",
+      meta: "Combines context + detail",
+      shape: "1/8 input, ~512 ch",
+      compute: "Concat only",
+      notes:
+        "Similar idea as P5↔P4 fusion, but now for P4↔P3. This yields a very detailed P3 feature " +
+        "that still carries semantic information from higher levels.",
+      tags: ["FPN", "Multi-scale", "P3"]
+    },
+    {
+      id: 17,
+      name: "C3×3(256, False)",
+      stage: "Neck",
+      stageSubtitle: "Refined P3 (FPN)",
+      type: "C3",
+      connection: "P3",
+      main: "C3 on fused P3 features",
+      meta: "Outputs 256 channels",
+      shape: "P3 out: 1/8 input, 256 ch",
+      compute: "High",
+      notes:
+        "Produces the final P3 feature map for detection and bottom-up (PANet) fusion.",
+      tags: ["FPN", "Refinement", "P3 out"]
+    },
+    {
+      id: 18,
+      name: "Conv(256, 3, 2)",
+      stage: "Neck",
+      stageSubtitle: "PANet: P3 → P4",
+      type: "Conv",
+      main: "Downsample P3 to P4 resolution",
+      meta: "Stride 2 · 1/8 → 1/16",
+      shape: "1/16 input, 256 ch",
+      compute: "Moderate",
+      notes:
+        "Starts the PANet bottom-up path: using refined P3 features to re-enrich P4 with " +
+        "additional low-level detail.",
+      tags: ["PANet", "Bottom-up"]
+    },
+    {
+      id: 19,
+      name: "Cat([18, 14])",
+      stage: "Neck",
+      stageSubtitle: "Fuse P3↓ with P4",
+      type: "Concat",
+      main: "Concatenate downsampled P3 with P4 out",
+      meta: "Improves P4 representation",
+      shape: "1/16 input, ~512 ch",
+      compute: "Concat only",
+      notes:
+        "Combines PANet P3 path with the original refined P4, increasing robustness and " +
+        "multi-scale expressiveness at P4.",
+      tags: ["PANet fusion", "P4"]
+    },
+    {
+      id: 20,
+      name: "C3×3(512, False)",
+      stage: "Neck",
+      stageSubtitle: "Refined P4 (PANet)",
+      type: "C3",
+      main: "C3 on fused P4 features",
+      meta: "Outputs 512 channels",
+      shape: "P4 fusion: 1/16 input, 512 ch",
+      compute: "High",
+      notes:
+        "This is the final P4 feature map used for detection after both FPN and PANet fusion.",
+      tags: ["PANet", "P4 fusion"]
+    },
+    {
+      id: 21,
+      name: "Conv(512, 3, 2)",
+      stage: "Neck",
+      stageSubtitle: "PANet: P4 → P5",
+      type: "Conv",
+      main: "Downsample P4 fusion to P5 resolution",
+      meta: "Stride 2 · 1/16 → 1/32",
+      shape: "1/32 input, 512 ch",
+      compute: "Moderate",
+      notes:
+        "Takes refined P4 features down to P5 scale so they can be fused again for the final P5 map.",
+      tags: ["Bottom-up", "Multi-scale"]
+    },
+    {
+      id: 22,
+      name: "Cat([21, 10])",
+      stage: "Neck",
+      stageSubtitle: "Fuse P4↓ with P5",
+      type: "Concat",
+      main: "Concatenate downsampled P4 fusion with P5 path",
+      meta: "Enhanced P5 representation",
+      shape: "1/32 input, ~1024 ch",
+      compute: "Concat only",
+      notes:
+        "Merges PANet-enhanced P4 with P5, giving the coarsest scale richer information from lower levels.",
+      tags: ["PANet fusion", "P5"]
+    },
+    {
+      id: 23,
+      name: "C3×3(1024, False)",
+      stage: "Neck",
+      stageSubtitle: "Refined P5 (PANet)",
+      type: "C3",
+      connection: "P5 fusion",
+      main: "Final C3 on fused P5 features",
+      meta: "Outputs 1024 channels",
+      shape: "P5 fusion: 1/32 input, 1024 ch",
+      compute: "Very high",
+      notes:
+        "Produces the final P5 fusion map that will be consumed by the detect head as the large-object scale.",
+      tags: ["PANet", "P5 fusion"]
+    },
+
+    {
+      id: 24,
+      name: "Detect([17,20,23], nc=8)",
+      stage: "Detect",
+      stageSubtitle: "Multi-scale prediction",
+      type: "Detect",
+      main: "Prediction head over P3, P4, P5",
+      meta: "Anchors per scale · KITTI nc=8",
+      shape: "P3 1/8, P4 1/16, P5 1/32",
+      compute: "High at inference, shared logic",
+      notes:
+        "The detect layer takes three feature maps: P3 (small objects), P4 (medium), " +
+        "and P5 (large) and converts them into bounding boxes, objectness scores, and class " +
+        "probabilities using anchor boxes tuned for KITTI.",
+      tags: ["Detection head", "Anchors", "Multi-scale inference"]
+    }
+  ];
+
+  const stagesMeta = {
+    Backbone: {
+      subtitle: "Feature extraction and downsampling"
+    },
+    Neck: {
+      subtitle: "FPN + PANet multi-scale fusion"
+    },
+    Detect: {
+      subtitle: "Final dense predictions"
+    }
+  };
+
+  const stageOrder = ["Backbone", "Neck", "Detect"];
+
+  const columnsContainer = document.getElementById("columns");
+  const stageChip = document.getElementById("stage-chip");
+  const detailName = document.getElementById("detail-name");
+  const detailId = document.getElementById("detail-id");
+  const detailShort = document.getElementById("detail-short");
+  const badgeRow = document.getElementById("badge-row");
+  const kvType = document.getElementById("kv-type");
+  const kvStage = document.getElementById("kv-stage");
+  const kvShape = document.getElementById("kv-shape");
+  const kvCompute = document.getElementById("kv-compute");
+  const detailNotes = document.getElementById("detail-notes");
+  const detailHint = document.getElementById("detail-hint");
+
+  let selectedLayerId = null;
+
+  function buildColumns() {
+    stageOrder.forEach(stageName => {
+      const col = document.createElement("div");
+      col.className = "stage-column";
+
+      const header = document.createElement("div");
+      header.className = "stage-header";
+
+      const label = document.createElement("div");
+      label.className = "stage-label";
+      label.textContent = stageName;
+
+      const title = document.createElement("div");
+      title.className = "stage-title";
+      title.textContent =
+        stageName === "Backbone"
+          ? "Backbone"
+          : stageName === "Neck"
+          ? "Neck (FPN + PANet)"
+          : "Detect Head";
+
+      const subtitle = document.createElement("div");
+      subtitle.className = "stage-subtitle";
+      subtitle.textContent = stagesMeta[stageName]?.subtitle || "";
+
+      header.appendChild(label);
+      header.appendChild(title);
+      header.appendChild(subtitle);
+
+      const list = document.createElement("div");
+      list.className = "block-list";
+
+      layers
+        .filter(l => l.stage === stageName)
+        .forEach(layer => {
+          const card = document.createElement("div");
+          card.className = "layer-card";
+          card.dataset.layerId = layer.id;
+
+          const top = document.createElement("div");
+          top.className = "layer-top-row";
+
+          const name = document.createElement("div");
+          name.className = "layer-name";
+          name.textContent = layer.name;
+
+          const id = document.createElement("div");
+          id.className = "layer-id";
+          id.textContent = `L${layer.id}`;
+
+          top.appendChild(name);
+          top.appendChild(id);
+
+          const main = document.createElement("div");
+          main.className = "layer-main";
+          main.textContent = layer.main;
+
+          const tagRow = document.createElement("div");
+          tagRow.className = "layer-tag-row";
+
+          const typePill = document.createElement("div");
+          typePill.className = "layer-type-pill";
+          typePill.textContent = layer.type;
+
+          const meta = document.createElement("div");
+          meta.className = "layer-meta";
+          meta.textContent = layer.meta;
+
+          tagRow.appendChild(typePill);
+          tagRow.appendChild(meta);
+
+          card.appendChild(top);
+          card.appendChild(main);
+          card.appendChild(tagRow);
+
+          if (layer.connection) {
+            const label = document.createElement("div");
+            label.className = "connection-label";
+            label.textContent = layer.connection;
+            card.appendChild(label);
+          }
+
+          card.addEventListener("click", evt => {
+            const withCtrl = evt.ctrlKey || evt.metaKey;
+            selectLayer(layer.id, { cycleWithinStage: withCtrl });
+          });
+
+          list.appendChild(card);
+        });
+
+      col.appendChild(header);
+      col.appendChild(list);
+      columnsContainer.appendChild(col);
+    });
+  }
+
+  function selectLayer(id, options = {}) {
+    const layer = layers.find(l => l.id === id);
+    if (!layer) return;
+
+    if (options.cycleWithinStage && selectedLayerId === id) {
+      const sameStage = layers.filter(l => l.stage === layer.stage);
+      const idx = sameStage.findIndex(l => l.id === id);
+      const next = sameStage[(idx + 1) % sameStage.length];
+      if (next) return selectLayer(next.id);
+    }
+
+    selectedLayerId = id;
+
+    document
+      .querySelectorAll(".layer-card")
+      .forEach(card => card.classList.remove("selected"));
+
+    const card = document.querySelector(`.layer-card[data-layer-id="${id}"]`);
+    if (card) card.classList.add("selected");
+
+    stageChip.textContent = `${layer.stage.toUpperCase()} · L${layer.id}`;
+    detailName.textContent = layer.name;
+    detailId.textContent = `LAYER L${layer.id} · ${layer.stage.toUpperCase()}`;
+    detailShort.textContent = layer.stageSubtitle || "";
+
+    kvType.textContent = layer.type || "—";
+    kvStage.textContent = `${layer.stage} ${
+      layer.connection ? `· ${layer.connection}` : ""
+    }`.trim();
+    kvShape.textContent = layer.shape || "—";
+    kvCompute.textContent = layer.compute || "—";
+    detailNotes.textContent = layer.notes || "";
+
+    detailHint.textContent =
+      (layer.tags && layer.tags.length
+        ? "Tags: " + layer.tags.join(" · ")
+        : "Multi-scale detection relies on a clean backbone → neck → head information flow.") +
+      " Hold Ctrl and click within a column to quickly step through nearby layers.";
+
+    badgeRow.innerHTML = "";
+
+    const stageBadge = document.createElement("span");
+    stageBadge.className = "badge badge-strong";
+    stageBadge.textContent =
+      layer.stage === "Backbone"
+        ? "Backbone: feature extractor"
+        : layer.stage === "Neck"
+        ? "Neck: FPN + PANet fusion"
+        : "Head: multi-scale predictions";
+    badgeRow.appendChild(stageBadge);
+
+    const typeBadge = document.createElement("span");
+    typeBadge.className = "badge";
+    typeBadge.textContent = `Type: ${layer.type}`;
+    badgeRow.appendChild(typeBadge);
+
+    if (layer.connection) {
+      const conn = document.createElement("span");
+      conn.className = "badge";
+      conn.textContent = `Scale: ${layer.connection}`;
+      badgeRow.appendChild(conn);
+    }
+
+    if (layer.tags) {
+      layer.tags.slice(0, 3).forEach(t => {
+        const b = document.createElement("span");
+        b.className = "badge";
+        b.textContent = t;
+        badgeRow.appendChild(b);
+      });
+    }
+  }
+
+  buildColumns();
+  selectLayer(24);
+</script>
+</body>
+</html>
